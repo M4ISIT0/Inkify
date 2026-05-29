@@ -1,6 +1,6 @@
 {
   "name": "Inkify",
-  "short_name": "Inkify",
+  "short_name": "Inkify App",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#000000",
