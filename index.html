@@ -338,17 +338,25 @@
             color: var(--texto-apagado);
             font-size: 14px;
         }
+
         @media (max-width: 768px) {
-            .app-container { flex-direction: column; height: auto; }
-            .sidebar { width: 100%; height: auto; flex-direction: row; padding: 10px; justify-content: space-between; }
+            body { height: 100vh; overflow: auto; }
+            .app-container { flex-direction: column; height: auto; padding-bottom: 120px; }
+            .sidebar { width: 100%; height: auto; flex-direction: row; padding: 10px; justify-content: space-between; align-items: center; }
             .logo-area { font-size: 18px; }
             .btn-subir { padding: 8px 15px; font-size: 12px; }
-            .main-content { flex-direction: column; padding: 10px; gap: 10px; }
-            .seccion-izquierda, .seccion-derecha { width: 100%; border: none; }
-            .cassette-box { width: 100%; max-width: 280px; height: 140px; margin: 0 auto; }
-            .player-bar { position: relative; height: auto; padding: 10px; margin-bottom: 20px; }
-            .player-core-layout { flex-direction: column; gap: 10px; }
-            #track-title { max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .main-content { flex-direction: column; padding: 15px; gap: 15px; overflow: visible; background: var(--fondo-vacio); }
+            .seccion-izquierda, .seccion-derecha { width: 100%; border: none; padding: 0; }
+            .seccion-derecha { order: -1; } /* Manda el cassette arriba de la lista en celular */
+            .cassette-box { width: 100%; max-width: 240px; height: 120px; margin: 0 auto; }
+            .player-bar { position: fixed; bottom: 0; left: 0; height: auto; padding: 12px 15px; z-index: 1000; }
+            .player-core-layout { flex-direction: row; justify-content: space-between; align-items: center; }
+            .track-info { width: 45%; }
+            .player-controls { width: 45%; }
+            .control-buttons { gap: 15px; justify-content: flex-end; }
+            .volume-area { display: none; }
+            #track-title { max-width: 130px; font-size: 13px; }
+            #track-artist { font-size: 10px; }
         }
     </style>
 </head>
@@ -357,7 +365,7 @@
     <div class="app-container">
         <div class="sidebar">
             <div class="logo-area">Inkify</div>
-            <h3 style="font-size: 14px; color: var(--texto-apagado); text-transform: uppercase; letter-spacing: 1px;">Tu Biblioteca</h3>
+            <h3 style="font-size: 14px; color: var(--texto-apagado); text-transform: uppercase; letter-spacing: 1px; display: none;">Tu Biblioteca</h3>
             
             <label class="btn-subir">
                 ➕ Subir Canciones
@@ -385,7 +393,7 @@
                         <div class="cassette-text" id="casete-estado">IDLE</div>
                     </div>
                 </div>
-                <div id="casete-titulo-pantalla" style="margin-top: 20px; font-weight: bold; color: var(--acento-dorado); text-align: center; font-size: 14px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                <div id="casete-titulo-pantalla" style="margin-top: 15px; font-weight: bold; color: var(--acento-dorado); text-align: center; font-size: 13px; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                     NINGUNA CANCIÓN REPRODUCIENDO
                 </div>
             </div>
@@ -407,10 +415,10 @@
 
             <div class="player-controls">
                 <div class="control-buttons">
-                    <button class="btn-control" id="btn-shuffle" style="background:none; border:none; color:#7a7a7a; font-size:18px; cursor:pointer; transition: 0.2s;">🔀</button>
-                    <button class="btn-control" id="btn-anterior" style="background:none; border:none; color:#fff; font-size:20px; cursor:pointer;">⏮</button>
+                    <button class="btn-control" id="btn-shuffle" style="background:none; border:none; color:#7a7a7a; font-size:16px; cursor:pointer; transition: 0.2s;">🔀</button>
+                    <button class="btn-control" id="btn-anterior" style="background:none; border:none; color:#fff; font-size:18px; cursor:pointer;">⏮</button>
                     <button class="btn-play" id="btn-reproducir">▶</button>
-                    <button class="btn-control" id="btn-siguiente" style="background:none; border:none; color:#fff; font-size:20px; cursor:pointer;">⏭</button>
+                    <button class="btn-control" id="btn-siguiente" style="background:none; border:none; color:#fff; font-size:18px; cursor:pointer;">⏭</button>
                 </div>
             </div>
 
@@ -734,7 +742,6 @@
         function reproducirCancion(cancion) {
             if (!cancion) return;
 
-            // Limpiar el reproductor para que cada canción empiece limpia en 0:00
             audioActual.pause();
             audioActual.currentTime = 0;
 
@@ -749,7 +756,6 @@
             nuevoBtnReproducir.innerText = "⏸";
             actualizarCasete("PLAYING");
 
-            // Activar Media Session para la notificación del celular
             configurarMediaSession(cancion.nombre);
         }
 
