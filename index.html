@@ -524,9 +524,6 @@
                 barraProgreso.value = porcentaje;
                 tiempoActualTxt.innerText = formatearTiempo(audioActual.currentTime);
                 barraProgreso.style.background = `linear-gradient(to right, var(--acento-dorado) 0%, var(--acento-dorado) ${porcentaje}%, #2a2a2a ${porcentaje}%, #2a2a2a 100%)`;
-                
-                // Guardar tiempo actual en memoria para evitar que se reinicie
-                localStorage.setItem('inkify_tiempo', audioActual.currentTime);
             }
         });
 
@@ -534,12 +531,6 @@
             tiempoTotalTxt.innerText = formatearTiempo(audioActual.duration);
             barraProgreso.value = 0;
             barraProgreso.style.background = "#2a2a2a";
-            
-            // Recuperar el segundo en el que iba si la página se recargó
-            const tiempoGuardado = localStorage.getItem('inkify_tiempo');
-            if (tiempoGuardado && !isNaN(tiempoGuardado)) {
-                audioActual.currentTime = parseFloat(tiempoGuardado);
-            }
         });
 
         barraProgreso.addEventListener('input', function() {
@@ -633,17 +624,6 @@
                 }
 
                 buscadorMusica.dispatchEvent(new Event('input'));
-
-                // Recuperar la última canción reproducida al abrir la app de cero
-                const idUltima = localStorage.getItem('inkify_ultima_id');
-                if (idUltima && indiceActual === -1) {
-                    const idx = listaCancionesGlobal.findIndex(c => c.id == idUltima);
-                    if (idx !== -1) {
-                        indiceActual = idx;
-                        trackTitle.innerText = listaCancionesGlobal[idx].nombre;
-                        caseteTituloPantalla.innerText = listaCancionesGlobal[idx].nombre.toUpperCase();
-                    }
-                }
             };
         }
 
@@ -737,6 +717,7 @@
                 transaccion.oncomplete = function() {
                     if (indiceActual !== -1 && filaReproduccion[indiceActual] && filaReproduccion[indiceActual].id === id) {
                         audioActual.pause();
+                        audioActual.currentTime = 0;
                         trackTitle.innerText = "Ninguna canción seleccionada";
                         nuevoBtnReproducir.innerText = "▶";
                         actualizarCasete("IDLE");
@@ -744,7 +725,6 @@
                         tiempoTotalTxt.innerText = "0:00";
                         barraProgreso.value = 0;
                         barraProgreso.style.background = "#2a2a2a";
-                        localStorage.removeItem('inkify_ultima_id');
                     }
                     cargarCanciones();
                 };
@@ -753,6 +733,11 @@
 
         function reproducirCancion(cancion) {
             if (!cancion) return;
+
+            // CORRECCIÓN: Limpiar el reproductor para que cada canción empiece limpia en 0:00
+            audioActual.pause();
+            audioActual.currentTime = 0;
+
             const blob = new Blob([cancion.archivoBlob], { type: "audio/mp3" });
             const urlAudio = URL.createObjectURL(blob);
             
@@ -763,9 +748,6 @@
             caseteTituloPantalla.innerText = cancion.nombre.toUpperCase();
             nuevoBtnReproducir.innerText = "⏸";
             actualizarCasete("PLAYING");
-
-            // Guardar ID actual en memoria para recordarlo al reabrir la app
-            localStorage.setItem('inkify_ultima_id', cancion.id);
 
             // Activar Media Session para la notificación del celular
             configurarMediaSession(cancion.nombre);
@@ -790,12 +772,12 @@
 
             if (indiceActual === filaReproduccion.length - 1) {
                 audioActual.pause();
+                audioActual.currentTime = 0;
                 audioActual.src = "";
                 nuevoBtnReproducir.innerText = "▶";
                 trackTitle.innerText = "Playlist finalizada";
                 indiceActual = -1;
                 actualizarCasete("IDLE");
-                localStorage.removeItem('inkify_ultima_id');
                 if (modoAleatorio) generarFilaAleatoriaFija();
                 return;
             } else {
