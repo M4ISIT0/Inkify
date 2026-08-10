@@ -423,9 +423,9 @@
     <script>
         let db;
         let listaCancionesGlobal = []; 
-        let filaReproduccion = [];       
+        let filaReproduccion = [];        
         let indiceActual = -1;         
-        let modoAleatorio = false;     
+        let modoAleatorio = false;    
 
         const request = indexedDB.open("InkifyDB", 1);
 
@@ -734,7 +734,7 @@
         function reproducirCancion(cancion) {
             if (!cancion) return;
 
-            // CORRECCIÓN: Limpiar el reproductor para que cada canción empiece limpia en 0:00
+            // Limpiar el reproductor para que cada canción empiece limpia en 0:00
             audioActual.pause();
             audioActual.currentTime = 0;
 
