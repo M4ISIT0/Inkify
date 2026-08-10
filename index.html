@@ -860,12 +860,5 @@
             btnSiguiente.click();
         };
     </script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-                .then(() => console.log('Service Worker registrado con éxito'))
-                .catch((error) => console.log('Error al registrar:', error));
-        }
-    </script>
 </body>
 </html>
