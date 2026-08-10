@@ -339,39 +339,17 @@
             font-size: 14px;
         }
         @media (max-width: 768px) {
-    /* Permitimos que el contenedor principal sea flexible */
-    .app-container { flex-direction: column; height: auto; }
-    
-    /* La sidebar se vuelve una barra superior delgada */
-    .sidebar { width: 100%; height: auto; flex-direction: row; padding: 10px; justify-content: space-between; }
-    .logo-area { font-size: 18px; }
-    .btn-subir { padding: 8px 15px; font-size: 12px; }
-
-    /* El contenido principal ocupa todo el ancho */
-    .main-content { flex-direction: column; padding: 10px; gap: 10px; }
-    .seccion-izquierda, .seccion-derecha { width: 100%; border: none; }
-    
-    /* EL CASETTE: Hacemos que sea flexible y no rígido */
-    .cassette-box { 
-        width: 100%; /* Ocupa el 100% del ancho del celular */
-        max-width: 280px; /* Pero sin pasarse de 280px */
-        height: 140px; 
-        margin: 0 auto; 
-    }
-    
-    /* El reproductor inferior: quitamos el height fijo para que no corte nada */
-    .player-bar { 
-        position: relative; 
-        height: auto; 
-        padding: 10px; 
-        margin-bottom: 20px; 
-    }
-    
-    .player-core-layout { flex-direction: column; gap: 10px; }
-    
-    /* Aseguramos que los textos no se desborden */
-    #track-title { max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-}
+            .app-container { flex-direction: column; height: auto; }
+            .sidebar { width: 100%; height: auto; flex-direction: row; padding: 10px; justify-content: space-between; }
+            .logo-area { font-size: 18px; }
+            .btn-subir { padding: 8px 15px; font-size: 12px; }
+            .main-content { flex-direction: column; padding: 10px; gap: 10px; }
+            .seccion-izquierda, .seccion-derecha { width: 100%; border: none; }
+            .cassette-box { width: 100%; max-width: 280px; height: 140px; margin: 0 auto; }
+            .player-bar { position: relative; height: auto; padding: 10px; margin-bottom: 20px; }
+            .player-core-layout { flex-direction: column; gap: 10px; }
+            #track-title { max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        }
     </style>
 </head>
 <body>
@@ -509,12 +487,46 @@
             return `${min}:${seg < 10 ? '0' : ''}${seg}`;
         }
 
+        // --- MEDIA SESSION API (Control de flechas en la notificación del celular) ---
+        function configurarMediaSession(nombreCancion) {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: nombreCancion,
+                    artist: 'Inkify Player',
+                    album: 'Mi Música Offline'
+                });
+
+                navigator.mediaSession.setActionHandler('play', function() {
+                    audioActual.play();
+                    actualizarCasete("PLAYING");
+                    nuevoBtnReproducir.innerText = "⏸";
+                });
+
+                navigator.mediaSession.setActionHandler('pause', function() {
+                    audioActual.pause();
+                    actualizarCasete("PAUSED");
+                    nuevoBtnReproducir.innerText = "▶";
+                });
+
+                navigator.mediaSession.setActionHandler('previoustrack', function() {
+                    btnAnterior.click();
+                });
+
+                navigator.mediaSession.setActionHandler('nexttrack', function() {
+                    btnSiguiente.click();
+                });
+            }
+        }
+
         audioActual.addEventListener('timeupdate', function() {
             if (!isNaN(audioActual.duration)) {
                 const porcentaje = (audioActual.currentTime / audioActual.duration) * 100;
                 barraProgreso.value = porcentaje;
                 tiempoActualTxt.innerText = formatearTiempo(audioActual.currentTime);
                 barraProgreso.style.background = `linear-gradient(to right, var(--acento-dorado) 0%, var(--acento-dorado) ${porcentaje}%, #2a2a2a ${porcentaje}%, #2a2a2a 100%)`;
+                
+                // Guardar tiempo actual en memoria para evitar que se reinicie
+                localStorage.setItem('inkify_tiempo', audioActual.currentTime);
             }
         });
 
@@ -522,6 +534,12 @@
             tiempoTotalTxt.innerText = formatearTiempo(audioActual.duration);
             barraProgreso.value = 0;
             barraProgreso.style.background = "#2a2a2a";
+            
+            // Recuperar el segundo en el que iba si la página se recargó
+            const tiempoGuardado = localStorage.getItem('inkify_tiempo');
+            if (tiempoGuardado && !isNaN(tiempoGuardado)) {
+                audioActual.currentTime = parseFloat(tiempoGuardado);
+            }
         });
 
         barraProgreso.addEventListener('input', function() {
@@ -563,32 +581,28 @@
             }
         });
 
-        // Lógica del buscador en tiempo real
         buscadorMusica.addEventListener('input', function() {
             const query = this.value.toLowerCase().trim();
             
             if (!query) {
-                renderizarLista(listaCancionesGlobal); // Mostrar todas si está vacío
+                renderizarLista(listaCancionesGlobal);
                 return;
             }
 
-            // Filtrar las que contienen el texto
             let filtradas = listaCancionesGlobal.filter(c => c.nombre.toLowerCase().includes(query));
 
-            // Ordenamiento inteligente (prioriza las que empiezan con la búsqueda)
             filtradas.sort((a, b) => {
                 const aEmpieza = a.nombre.toLowerCase().startsWith(query);
                 const bEmpieza = b.nombre.toLowerCase().startsWith(query);
                 
-                if (aEmpieza && !bEmpieza) return -1; // 'a' sube
-                if (!aEmpieza && bEmpieza) return 1;  // 'b' sube
-                return 0; // Si ambas empiezan o ninguna empieza, mantienen su orden
+                if (aEmpieza && !bEmpieza) return -1;
+                if (!aEmpieza && bEmpieza) return 1;
+                return 0;
             });
 
             renderizarLista(filtradas);
         });
 
-        // Extrae las canciones de la BD y actualiza la lista global
         function cargarCanciones() {
             const transaccion = db.transaction(["canciones"], "readonly");
             const almacen = transaccion.objectStore("canciones");
@@ -618,12 +632,21 @@
                     filaReproduccion = [...listaCancionesGlobal];
                 }
 
-                // Disparamos la búsqueda manual para que si hay texto en el buscador se aplique al subir canciones nuevas
                 buscadorMusica.dispatchEvent(new Event('input'));
+
+                // Recuperar la última canción reproducida al abrir la app de cero
+                const idUltima = localStorage.getItem('inkify_ultima_id');
+                if (idUltima && indiceActual === -1) {
+                    const idx = listaCancionesGlobal.findIndex(c => c.id == idUltima);
+                    if (idx !== -1) {
+                        indiceActual = idx;
+                        trackTitle.innerText = listaCancionesGlobal[idx].nombre;
+                        caseteTituloPantalla.innerText = listaCancionesGlobal[idx].nombre.toUpperCase();
+                    }
+                }
             };
         }
 
-        // Se encarga únicamente de dibujar las canciones que le pasemos
         function renderizarLista(cancionesARenderizar) {
             listaContenedor.innerHTML = "";
 
@@ -655,7 +678,6 @@
                 div.onmouseenter = () => div.style.borderColor = '#dfb247';
                 div.onmouseleave = () => div.style.borderColor = '#222';
 
-                // Reproducir al hacer click
                 div.querySelector('.info-click').onclick = function() {
                     if (modoAleatorio) {
                         generarFilaAleatoriaFija(cancion.id);
@@ -666,13 +688,11 @@
                     reproducirCancion(filaReproduccion[indiceActual]);
                 };
 
-                // Botón Editar Nombre
                 div.querySelector('.editar').onclick = function(e) {
                     e.stopPropagation();
                     renombrarCancion(cancion.id, cancion.nombre);
                 };
 
-                // Botón Borrar
                 div.querySelector('.borrar').onclick = function(e) {
                     e.stopPropagation(); 
                     eliminarCancion(cancion.id);
@@ -682,15 +702,12 @@
             });
         }
 
-        // Función para cambiar el nombre de la canción en la BD
         function renombrarCancion(id, nombreActual) {
             const nuevoNombre = prompt("📝 Escribe el nuevo nombre de la canción:", nombreActual);
             
             if (nuevoNombre && nuevoNombre.trim() !== "" && nuevoNombre !== nombreActual) {
                 const transaccion = db.transaction(["canciones"], "readwrite");
                 const almacen = transaccion.objectStore("canciones");
-                
-                // Obtenemos la canción completa primero para no perder el archivoBlob
                 const peticionGet = almacen.get(id);
                 
                 peticionGet.onsuccess = function() {
@@ -700,12 +717,12 @@
                     const peticionPut = almacen.put(cancionData);
                     
                     peticionPut.onsuccess = function() {
-                        // Si la canción editada es la que está sonando ahorita, actualizamos los textos
                         if (indiceActual !== -1 && filaReproduccion[indiceActual] && filaReproduccion[indiceActual].id === id) {
                             trackTitle.innerText = cancionData.nombre;
                             caseteTituloPantalla.innerText = cancionData.nombre.toUpperCase();
+                            configurarMediaSession(cancionData.nombre);
                         }
-                        cargarCanciones(); // Recargamos para ver los cambios
+                        cargarCanciones();
                     };
                 };
             }
@@ -727,6 +744,7 @@
                         tiempoTotalTxt.innerText = "0:00";
                         barraProgreso.value = 0;
                         barraProgreso.style.background = "#2a2a2a";
+                        localStorage.removeItem('inkify_ultima_id');
                     }
                     cargarCanciones();
                 };
@@ -745,6 +763,12 @@
             caseteTituloPantalla.innerText = cancion.nombre.toUpperCase();
             nuevoBtnReproducir.innerText = "⏸";
             actualizarCasete("PLAYING");
+
+            // Guardar ID actual en memoria para recordarlo al reabrir la app
+            localStorage.setItem('inkify_ultima_id', cancion.id);
+
+            // Activar Media Session para la notificación del celular
+            configurarMediaSession(cancion.nombre);
         }
 
         nuevoBtnReproducir.onclick = function() {
@@ -771,6 +795,7 @@
                 trackTitle.innerText = "Playlist finalizada";
                 indiceActual = -1;
                 actualizarCasete("IDLE");
+                localStorage.removeItem('inkify_ultima_id');
                 if (modoAleatorio) generarFilaAleatoriaFija();
                 return;
             } else {
@@ -854,11 +879,11 @@
         };
     </script>
     <script>
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js')
-            .then(() => console.log('Service Worker registrado con éxito'))
-            .catch((error) => console.log('Error al registrar:', error));
-    }
-</script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(() => console.log('Service Worker registrado con éxito'))
+                .catch((error) => console.log('Error al registrar:', error));
+        }
+    </script>
 </body>
 </html>
